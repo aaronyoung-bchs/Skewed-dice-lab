@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Skew Question</title>
+  <meta name="description" content="Roll a standard die and The Dice Lab's Skew d6, record the results, and export them.">
+  <style>
+    /* ============================================================
+       THEME: Bullitt Central High School colors.
+       Contrast checked (WCAG):
+         maroon on white  12.2:1   maroon on gray  5.7:1
+         gray on white     2.2:1   -> gray is for borders and
+                                      backgrounds only, never text.
+       ============================================================ */
+    :root {
+      --bchs-maroon: #4B2D2F;
+      --bchs-gray:   #B0B1AC;
+
+      --bg:          #F3F3F1;   /* page background, a light tint of BCHS gray */
+      --surface:     #FFFFFF;   /* cards */
+      --text:        #1F1A1B;
+      --text-muted:  #5C5557;   /* 7.3:1 on white */
+      --accent:      var(--bchs-maroon);
+      --accent-ink:  #FFFFFF;   /* text on maroon */
+      --line:        var(--bchs-gray);
+
+      --radius: 12px;
+      --gap: 1.25rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 1.0625rem;
+      line-height: 1.55;
+    }
+
+    a { color: var(--accent); text-underline-offset: 2px; }
+
+    /* Visible keyboard focus everywhere */
+    :focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 1.75rem 0 1.5rem;
+      border-bottom: 6px solid var(--bchs-gray);
+    }
+    .site-header h1 {
+      margin: 0;
+      font-size: clamp(1.9rem, 5vw, 2.75rem);
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+    }
+    .site-header .tagline {
+      margin: 0.4rem 0 0;
+      font-size: 1.1rem;
+      opacity: 0.95;
+    }
+
+    /* ---------- Intro panel ---------- */
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin: var(--gap) 0;
+    }
+    .intro p { margin: 0 0 0.75rem; }
+    .intro p:last-child { margin-bottom: 0; }
+    .intro .question {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* ---------- Dice grid ---------- */
+    .dice-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    @media (min-width: 760px) {
+      .dice-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .die-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 0;
+    }
+    .die-card h2 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 1.5rem;
+    }
+
+    /* Area where the die drawing will go */
+    .die-stage {
+      display: grid;
+      place-items: center;
+      min-height: 180px;
+      background: var(--bg);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    button {
+      font: inherit;
+      font-weight: 600;
+      min-height: 48px;          /* large touch targets */
+      padding: 0.6rem 1.1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      flex: 1 1 0;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border: 2px solid var(--accent);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    /* ---------- Results table ---------- */
+    .results { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .results caption {
+      text-align: left;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+    .results th, .results td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.25rem;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .results thead th { background: var(--bg); }
+    .results tbody th { background: var(--bg); text-align: left; padding-left: 0.5rem; }
+    .results td { overflow-wrap: anywhere; }
+    .results .label-col { width: 4.75rem; }
+
+    /* Narrow phones: tighten spacing so the 7-column table and 3 roll buttons fit */
+    @media (max-width: 420px) {
+      .die-card { padding: 1rem; }
+      .btn-primary { padding: 0.6rem 0.5rem; }
+      .results th, .results td { padding: 0.45rem 0.1rem; }
+      .results .label-col { width: 4rem; }
+      .results tbody th { padding-left: 0.35rem; }
+    }
+
+    .total { margin: 0; font-weight: 600; }
+    .status { margin: 0; min-height: 1.55em; color: var(--text-muted); }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      border-top: 1px solid var(--line);
+      padding: 1.25rem 0 2rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .site-footer p { margin: 0 0 0.5rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <h1>The Skew Question</h1>
+      <p class="tagline">Two dice, one very strange shape. Can a die like this really be fair? Roll, record, and decide.</p>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+    <section class="intro" aria-label="About the challenge">
+      <p>
+        The Dice Lab makes the
+        <a href="https://www.mathartfun.com/thedicelab.com/SkewDice.html" target="_blank" rel="noopener">Skew d6</a>,
+        a die with slanted, parallelogram-shaped faces, and advertises it as just as fair as a
+        regular die. Next to it is an ordinary cube. Your team can roll either die as many times as
+        you choose, up to 10,000 rolls each.
+      </p>
+      <p class="question">Is either die unfair?</p>
+      <p>You decide how much evidence is enough, and you explain how sure you can be.</p>
+    </section>
+
+    <!-- One card per die is built from the DICE configuration below. -->
+    <main id="dice" class="dice-grid" aria-label="Dice"></main>
+
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        The Skew d6 is designed and sold by
+        <a href="https://www.mathartfun.com/thedicelab.com/SkewDice.html" target="_blank" rel="noopener">The Dice Lab</a>.
+        The drawing on this page is an original rendering.
+      </p>
+      <p>The Skew d6 on this page is based on real classroom rolls collected by AP Statistics teacher Doug Tyson and his students.</p>
+      <p>Your rolls are saved only in this browser. Nothing is sent anywhere.</p>
+      <p>Bullitt Central High School Mu Alpha Theta</p>
+    </div>
+  </footer>
+
+  <!-- Markup for a single die card. Filled in by buildCard(). -->
+  <template id="die-card-template">
+    <section class="die-card">
+      <h2 class="die-name"></h2>
+
+      <div class="die-stage" aria-hidden="true">
+        <span>Die drawing coming soon</span>
+      </div>
+
+      <div class="btn-row roll-buttons" role="group"></div>
+
+      <table class="results">
+        <caption>Results</caption>
+        <colgroup><col class="label-col"></colgroup>
+        <thead>
+          <tr class="face-row"><th scope="col">Face</th></tr>
+        </thead>
+        <tbody>
+          <tr class="count-row"><th scope="row">Count</th></tr>
+        </tbody>
+      </table>
+
+      <p class="total">Total rolls: <span class="total-count">0</span></p>
+      <p class="status" role="status" aria-live="polite"></p>
+
+      <div class="btn-row die-actions">
+        <button type="button" class="btn-secondary" data-action="export-history">Export roll history (CSV)</button>
+        <button type="button" class="btn-secondary" data-action="export-summary">Export summary (CSV)</button>
+        <button type="button" class="btn-secondary" data-action="reset">Reset this die</button>
+      </div>
+    </section>
+  </template>
+
+  <script>
+    'use strict';
+
+    /* ============================================================
+       DICE CONFIGURATION
+       Each entry describes one die card on the page.
+         id    - short key used in element ids (and, later, storage)
+         name  - display name shown on the card
+       Face weights and the drawing style are added in the next step.
+       ============================================================ */
+    const DICE = [
+      { id: 'standard', name: 'Standard Die' },
+      { id: 'skew',     name: 'Skew d6' },
+    ];
+
+    const FACES = [1, 2, 3, 4, 5, 6];
+    const BATCH_SIZES = [1, 5, 10];   // the only batch sizes offered
+
+    /* Build one card from the template for a die config. */
+    function buildCard(die) {
+      const tpl = document.getElementById('die-card-template');
+      const card = tpl.content.firstElementChild.cloneNode(true);
+      const headingId = `die-${die.id}-heading`;
+
+      card.id = `die-${die.id}`;
+      card.setAttribute('aria-labelledby', headingId);
+
+      const heading = card.querySelector('.die-name');
+      heading.id = headingId;
+      heading.textContent = die.name;
+
+      card.querySelector('.results caption').textContent = `${die.name} results`;
+
+      // Roll buttons: 1, 5, 10
+      const rollGroup = card.querySelector('.roll-buttons');
+      rollGroup.setAttribute('aria-label', `Roll the ${die.name}`);
+      for (const n of BATCH_SIZES) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn-primary';
+        b.dataset.action = 'roll';
+        b.dataset.count = String(n);
+        b.textContent = `Roll ${n}`;
+        b.setAttribute('aria-label', `Roll the ${die.name} ${n} ${n === 1 ? 'time' : 'times'}`);
+        rollGroup.appendChild(b);
+      }
+
+      // Results table: one column per face
+      const faceRow = card.querySelector('.face-row');
+      const countRow = card.querySelector('.count-row');
+      for (const f of FACES) {
+        const th = document.createElement('th');
+        th.scope = 'col';
+        th.textContent = String(f);
+        faceRow.appendChild(th);
+
+        const td = document.createElement('td');
+        td.className = `count-${f}`;
+        td.textContent = '0';
+        countRow.appendChild(td);
+      }
+
+      return card;
+    }
+
+    const diceContainer = document.getElementById('dice');
+    for (const die of DICE) diceContainer.appendChild(buildCard(die));
+  </script>
+</body>
+</html>

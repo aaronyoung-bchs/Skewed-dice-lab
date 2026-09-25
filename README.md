@@ -81,6 +81,21 @@ git push origin jan-2027
 
 ---
 
+## Look and theme
+
+The page uses the Bullitt Central High School colors, defined once as CSS variables at the top of `index.html`:
+
+| Token | Color | Used for |
+| --- | --- | --- |
+| `--bchs-maroon` | `#4B2D2F` | header, headings, buttons, links |
+| `--bchs-gray` | `#B0B1AC` | borders, header stripe, table lines |
+
+Contrast was checked against WCAG: maroon on white is 12.2:1 and maroon on gray is 5.7:1. Gray on white is only 2.2:1, so **gray is never used for text**.
+
+The layout shows two columns on wide screens and one column on phones and narrow Chromebook windows. All buttons are at least 48 px tall for touch.
+
+---
+
 ## Reusing the page with different dice
 
 *Filled in once `index.html` exists.* This section will explain where the dice configuration lives, how to change a die's name, shape, or face weights, and when to change the storage key so old saved data doesn't carry over.
@@ -91,7 +106,7 @@ git push origin jan-2027
 
 - [x] Settle open decisions (name, theme, credits)
 - [x] Set up the repository foundation (README, license, Pages config)
-- [ ] Build the page skeleton and intro panel
+- [x] Build the page skeleton and intro panel (BCHS colors, responsive layout)
 - [ ] Add the dice configuration and weighted rolling logic
 - [ ] Draw the Standard Die and the Skew d6
 - [ ] Add batch roll buttons (1 / 5 / 10) and a brief animation
