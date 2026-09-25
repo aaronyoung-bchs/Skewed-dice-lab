@@ -6,7 +6,7 @@ A single-page dice-rolling interactive for the **January 2027 Mu Alpha Theta mon
 
 **Live page:** <https://aaronyoung-bchs.github.io/Skewed-dice-lab/>
 
-> **Status:** feature-complete; ready for the January 2027 challenge. See the [build checklist](#build-checklist).
+> **Status:** live. The version for the January 2027 challenge is tagged [`jan-2027`](https://github.com/aaronyoung-bchs/Skewed-dice-lab/releases/tag/jan-2027).
 
 ---
 
@@ -68,12 +68,24 @@ Pages serves whatever is on `main`, so anything merged to `main` goes live for s
 
 **Branches and pull requests.** Make changes on a separate branch and open a pull request into `main`. Test the page from the branch before merging, because merging publishes it.
 
-**Version tags.** When a version goes out to students, tag it so that exact page can be restored or reused later:
+**Version tags.** When a version goes out to students, tag it so that exact page can be restored or reused later. The easiest way is on GitHub:
+
+1. Open **Releases** and click **Draft a new release**.
+2. Under **Choose a tag**, type the new tag name (for example `jan-2027`) and pick **Create new tag on publish**.
+3. Set **Target** to `main`, add a title, and click **Publish release**.
+
+Or from the command line:
 
 ```bash
 git tag -a jan-2027 -m "Version used for the January 2027 challenge"
 git push origin jan-2027
 ```
+
+| Tag | Used for |
+| --- | --- |
+| `jan-2027` | January 2027 Mu Alpha Theta challenge |
+
+**Restoring a tagged version.** To see an old version, open its release on GitHub and download the source. To put it back live, open a pull request that restores `index.html` from that tag (`git checkout jan-2027 -- index.html`).
 
 **Avoid changes during a live challenge.** Teams' saved rolls live in their browsers. Changing the storage format or the dice while a challenge is running could erase or mix up their data. Make changes between challenges, or bump the storage key on purpose (see below).
 
@@ -163,8 +175,8 @@ The weights are encoded only so they aren't in plain view. The encoding is not s
 - [x] Add reset with confirmation
 - [x] Teacher review of the working page
 - [x] Enable GitHub Pages (branch `main`, root folder)
-- [ ] Merge to `main` and confirm the live page loads
-- [ ] Tag the student version `jan-2027`
+- [x] Merge to `main` ([#1](https://github.com/aaronyoung-bchs/Skewed-dice-lab/pull/1))
+- [x] Tag the student version `jan-2027`
 
 ---
 
