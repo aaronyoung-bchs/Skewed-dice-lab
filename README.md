@@ -4,9 +4,9 @@
 
 A single-page dice-rolling interactive for the **January 2027 Mu Alpha Theta monthly challenge** at Bullitt Central High School. One die is a standard cube. The other is modeled on The Dice Lab's **Skew d6**, a real slanted die whose faces are parallelograms.
 
-**Live page:** <https://aaronyoung-bchs.github.io/Skewed-dice-lab/> *(available once GitHub Pages is enabled; see [Deploying](#deploying-to-github-pages))*
+**Live page:** <https://aaronyoung-bchs.github.io/Skewed-dice-lab/>
 
-> **Status:** in development. See the [build checklist](#build-checklist).
+> **Status:** feature-complete; ready for the January 2027 challenge. See the [build checklist](#build-checklist).
 
 ---
 
@@ -161,8 +161,10 @@ The weights are encoded only so they aren't in plain view. The encoding is not s
 - [x] Save rolls in the browser (local storage)
 - [x] Add CSV export (full history and summary)
 - [x] Add reset with confirmation
-- [ ] Final review: test on a real Chromebook and phone, check accessibility with a keyboard and a screen reader
-- [ ] Enable GitHub Pages and tag `jan-2027`
+- [x] Teacher review of the working page
+- [x] Enable GitHub Pages (branch `main`, root folder)
+- [ ] Merge to `main` and confirm the live page loads
+- [ ] Tag the student version `jan-2027`
 
 ---
 
