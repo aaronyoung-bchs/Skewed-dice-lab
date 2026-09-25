@@ -116,15 +116,26 @@
       font-size: 1.5rem;
     }
 
-    /* Area where the die drawing will go */
+    /* Area that holds the die drawing */
     .die-stage {
       display: grid;
       place-items: center;
-      min-height: 180px;
+      min-height: 190px;
+      padding: 1rem;
       background: var(--bg);
-      border: 1px dashed var(--line);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      color: var(--text-muted);
+    }
+    .die-stage svg { height: 150px; width: auto; max-width: 100%; overflow: visible; }
+
+    /* Brief "tumble" played once per batch (skipped under reduced motion) */
+    .die-stage svg.tumble { animation: tumble 320ms ease-out; }
+    @keyframes tumble {
+      0%   { transform: translateY(0)     rotate(0deg); }
+      30%  { transform: translateY(-16px) rotate(-20deg); }
+      60%  { transform: translateY(-4px)  rotate(12deg); }
+      80%  { transform: translateY(0)     rotate(-4deg); }
+      100% { transform: translateY(0)     rotate(0deg); }
     }
 
     /* ---------- Buttons ---------- */
@@ -187,6 +198,26 @@
 
     .total { margin: 0; font-weight: 600; }
     .status { margin: 0; min-height: 1.55em; color: var(--text-muted); }
+    .status .notice { display: block; color: var(--accent); font-weight: 600; }
+
+    /* ---------- Reset confirmation dialog ---------- */
+    dialog {
+      max-width: min(28rem, calc(100vw - 32px));
+      border: 1px solid var(--line);
+      border-top: 6px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      color: var(--text);
+      background: var(--surface);
+    }
+    dialog::backdrop { background: rgba(31, 26, 27, 0.55); }
+    dialog h2 { margin: 0 0 0.5rem; color: var(--accent); font-size: 1.3rem; }
+    dialog p { margin: 0 0 1rem; }
+    .btn-danger {
+      background: #8A1C1C;          /* 8.6:1 with white text */
+      color: #FFFFFF;
+      border: 2px solid #8A1C1C;
+    }
 
     /* ---------- Footer ---------- */
     .site-footer {
@@ -235,22 +266,30 @@
       <p>
         The Skew d6 is designed and sold by
         <a href="https://www.mathartfun.com/thedicelab.com/SkewDice.html" target="_blank" rel="noopener">The Dice Lab</a>.
-        The drawing on this page is an original rendering.
+        The dice drawings on this page were generated with AI assistance (Claude);
+        they are not The Dice Lab's product images.
       </p>
       <p>The Skew d6 on this page is based on real classroom rolls collected by AP Statistics teacher Doug Tyson and his students.</p>
       <p>Your rolls are saved only in this browser. Nothing is sent anywhere.</p>
-      <p>Bullitt Central High School Mu Alpha Theta</p>
     </div>
   </footer>
+
+  <!-- Shared confirmation dialog for resetting a die -->
+  <dialog id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-message">
+    <h2 id="reset-title">Reset this die?</h2>
+    <p id="reset-message"></p>
+    <form method="dialog" class="btn-row">
+      <button type="submit" value="cancel" class="btn-secondary" autofocus>Cancel</button>
+      <button type="submit" value="confirm" class="btn-danger" id="reset-confirm">Erase rolls</button>
+    </form>
+  </dialog>
 
   <!-- Markup for a single die card. Filled in by buildCard(). -->
   <template id="die-card-template">
     <section class="die-card">
       <h2 class="die-name"></h2>
 
-      <div class="die-stage" aria-hidden="true">
-        <span>Die drawing coming soon</span>
-      </div>
+      <div class="die-stage" aria-hidden="true"></div>
 
       <div class="btn-row roll-buttons" role="group"></div>
 
@@ -281,20 +320,261 @@
 
     /* ============================================================
        DICE CONFIGURATION
-       Each entry describes one die card on the page.
-         id    - short key used in element ids (and, later, storage)
-         name  - display name shown on the card
-       Face weights and the drawing style are added in the next step.
+       One entry per die card. To reuse the page with other dice,
+       edit this list (see "Reusing the page" in README.md).
+
+         id       short key used in element ids and in browser storage
+         name     display name shown on the card
+         file     file-name prefix for CSV exports
+         shape    'cube' (standard) or 'skew' (slanted, parallelogram faces)
+         colors   face shading (top / front / side), edge, and pip colors
+         weights  the six face weights, ENCODED (see below)
+
+       WEIGHTS
+       Each die has six whole-number weights, one per face, in order
+       1, 2, 3, 4, 5, 6. A face's probability is its weight divided by
+       the sum of all six. Whole numbers keep the probabilities exact:
+         [1, 1, 1, 1, 1, 1]  -> every face exactly 1/6
+         [2, 1, 1, 1, 1, 1]  -> face 1 is 2/7, the others 1/7 each
+
+       The weights are lightly obscured (not secret) so they don't sit
+       in plain view. To make a new string, open this page, open the
+       browser console (Ctrl+Shift+J on a Chromebook), and run:
+         encodeWeights([1, 1, 1, 1, 1, 1])
+       then paste the result into `weights` below.
        ============================================================ */
     const DICE = [
-      { id: 'standard', name: 'Standard Die' },
-      { id: 'skew',     name: 'Skew d6' },
+      {
+        id: 'standard',
+        name: 'Standard Die',
+        file: 'standard-die',
+        shape: 'cube',
+        colors: { top: '#FFFFFF', front: '#ECECE9', side: '#D3D3CF', edge: '#4B2D2F', pip: '#1F1A1B' },
+        weights: 'MS4xLjEuMS4xLjE=',
+      },
+      {
+        id: 'skew',
+        name: 'Skew d6',
+        file: 'skew-d6',
+        shape: 'skew',
+        colors: { top: '#7A5457', front: '#4B2D2F', side: '#35201F', edge: '#1F1A1B', pip: '#FFFFFF' },
+        weights: 'ODA2MS4wNjcxLjg4NzEuNTk2MS4wNzcxLjk3MzE=',
+      },
     ];
 
     const FACES = [1, 2, 3, 4, 5, 6];
-    const BATCH_SIZES = [1, 5, 10];   // the only batch sizes offered
+    const BATCH_SIZES = [1, 5, 10];     // the only batch sizes offered
+    const MAX_ROLLS = 10000;            // total rolls allowed per die (saved rolls count)
+    const STORAGE_PREFIX = 'skewQuestion.v1.';  // change the version to start everyone fresh
 
-    /* Build one card from the template for a die config. */
+    /* ============================================================
+       WEIGHT ENCODING
+       encode: weights -> "w1.w2.w3.w4.w5.w6" -> reversed -> base64
+       decode: the same steps backwards.
+       ============================================================ */
+    function encodeWeights(weights) {
+      return btoa(weights.join('.').split('').reverse().join(''));
+    }
+    function decodeWeights(encoded) {
+      const weights = atob(encoded).split('').reverse().join('').split('.').map(Number);
+      if (weights.length !== 6 || !weights.every(w => Number.isInteger(w) && w >= 0)
+          || weights.reduce((a, b) => a + b, 0) === 0) {
+        throw new Error('Invalid die weights: ' + encoded);
+      }
+      return weights;
+    }
+    window.encodeWeights = encodeWeights;   // available in the console for making new dice
+
+    /* ============================================================
+       ROLLING LOGIC
+       makeRoller(weights) returns a function that rolls the die once.
+
+       1. Add up the weights to get a total T (6 for a standard die).
+       2. Pick a random whole number r from 0 to T-1, each equally likely.
+       3. Walk through the faces keeping a running sum of weights; the
+          first face whose running sum is greater than r is the result.
+          So face k is chosen for exactly weight[k] of the T values of r,
+          giving probability weight[k] / T.
+
+       Randomness comes from crypto.getRandomValues (the browser's
+       secure generator). "Rejection sampling" throws away the few
+       32-bit values at the very top of the range that would make some
+       remainders more likely than others, so every r is equally likely.
+       ============================================================ */
+    function makeRoller(weights) {
+      const total = weights.reduce((a, b) => a + b, 0);
+      const cumulative = [];
+      let running = 0;
+      for (const w of weights) { running += w; cumulative.push(running); }
+
+      const RANGE = 2 ** 32;
+      const limit = RANGE - (RANGE % total);   // largest multiple of total that fits
+      const buffer = new Uint32Array(256);     // fetch random numbers in bulk
+      let next = buffer.length;
+
+      function randomBelowTotal() {
+        for (;;) {
+          if (next >= buffer.length) { crypto.getRandomValues(buffer); next = 0; }
+          const x = buffer[next++];
+          if (x < limit) return x % total;      // otherwise reject and draw again
+        }
+      }
+
+      return function rollOnce() {
+        const r = randomBelowTotal();
+        for (let i = 0; i < cumulative.length; i++) {
+          if (r < cumulative[i]) return i + 1;   // faces are numbered 1-6
+        }
+      };
+    }
+
+    /* ============================================================
+       SAVED DATA
+       Each die's full history is one string of digits, one character
+       per roll ("3164..."). 10,000 rolls is about 10 KB. Counts are
+       rebuilt from the history when the page loads.
+       ============================================================ */
+    let storageWorks = true;
+
+    function storageKey(die) { return STORAGE_PREFIX + die.id; }
+
+    function loadHistory(die) {
+      try {
+        const saved = localStorage.getItem(storageKey(die)) || '';
+        return /^[1-6]*$/.test(saved) ? saved.slice(0, MAX_ROLLS) : '';
+      } catch (e) {
+        storageWorks = false;
+        return '';
+      }
+    }
+    function saveHistory(die, history) {
+      try {
+        if (history) localStorage.setItem(storageKey(die), history);
+        else localStorage.removeItem(storageKey(die));
+      } catch (e) {
+        storageWorks = false;
+      }
+    }
+    function countFaces(history) {
+      const counts = [0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < history.length; i++) counts[history.charCodeAt(i) - 49]++;  // '1' is 49
+      return counts;
+    }
+
+    /* ============================================================
+       DRAWING
+       Each die is a unit cube drawn in an oblique view that shows the
+       top, front, and right faces. The Skew d6 applies a shear to the
+       cube's corners before drawing, so its faces become
+       parallelograms. The pips are placed on a flat unit square and
+       mapped onto each face with an SVG transform, so they slant with
+       the face.
+       ============================================================ */
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const SHEAR = {
+      cube: { xz: 0,    xy: 0 },       // no slant
+      skew: { xz: 0.42, xy: 0.28 },    // lean right as it rises; slant the top
+    };
+    const DEPTH = { x: 0.55, y: 0.55 }; // how far "back" is drawn to the upper right
+    const SCALE = 100;
+
+    function project([x, y, z], shear) {
+      const sx = x + shear.xz * z + shear.xy * y;
+      return [SCALE * (sx + DEPTH.x * y), SCALE * (-z - DEPTH.y * y)];
+    }
+
+    // Each visible face: a corner plus the two edges (u across, v down) in 3-D.
+    const FACE_FRAMES = {
+      top:   { origin: [0, 1, 1], u: [1, 0, 0], v: [0, -1, 0] },
+      front: { origin: [0, 0, 1], u: [1, 0, 0], v: [0, 0, -1] },
+      side:  { origin: [1, 0, 1], u: [0, 1, 0], v: [0, 0, -1] },
+    };
+
+    // Pip positions on a unit square (0-1 across, 0-1 down)
+    const PIPS = {
+      1: [[0.5, 0.5]],
+      2: [[0.27, 0.27], [0.73, 0.73]],
+      3: [[0.27, 0.27], [0.5, 0.5], [0.73, 0.73]],
+      4: [[0.27, 0.27], [0.73, 0.27], [0.27, 0.73], [0.73, 0.73]],
+      5: [[0.27, 0.27], [0.73, 0.27], [0.5, 0.5], [0.27, 0.73], [0.73, 0.73]],
+      6: [[0.27, 0.25], [0.27, 0.5], [0.27, 0.75], [0.73, 0.25], [0.73, 0.5], [0.73, 0.75]],
+    };
+
+    // Outward direction of each numbered face on a standard die (opposites sum to 7).
+    const FACE_NORMAL = {
+      1: [0, 0, 1], 6: [0, 0, -1],
+      2: [0, -1, 0], 5: [0, 1, 0],
+      3: [1, 0, 0], 4: [-1, 0, 0],
+    };
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const faceWithNormal = n => FACES.find(f => FACE_NORMAL[f].every((c, i) => c === n[i]));
+
+    // Given the top face, pick a front face and work out the right-hand face.
+    function orientationFor(top) {
+      const choices = FACES.filter(f => f !== top && f !== 7 - top);
+      const front = choices[Math.floor(Math.random() * choices.length)];  // visual only
+      const side = faceWithNormal(cross(FACE_NORMAL[top], FACE_NORMAL[front]));
+      return { top, front, side };
+    }
+
+    function svgEl(tag, attrs) {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const k in attrs) el.setAttribute(k, attrs[k]);
+      return el;
+    }
+
+    function buildDieSvg(die) {
+      const shear = SHEAR[die.shape];
+      const svg = svgEl('svg', { focusable: 'false' });
+
+      // Fit the view box around the eight projected corners.
+      const xs = [], ys = [];
+      for (const x of [0, 1]) for (const y of [0, 1]) for (const z of [0, 1]) {
+        const [px, py] = project([x, y, z], shear);
+        xs.push(px); ys.push(py);
+      }
+      const pad = 8;
+      const minX = Math.min(...xs) - pad, minY = Math.min(...ys) - pad;
+      svg.setAttribute('viewBox',
+        `${minX} ${minY} ${Math.max(...xs) - minX + pad} ${Math.max(...ys) - minY + pad}`);
+
+      const pipGroups = {};
+      for (const role of ['front', 'side', 'top']) {
+        const { origin, u, v } = FACE_FRAMES[role];
+        const o = project(origin, shear);
+        const pu = project(origin.map((c, i) => c + u[i]), shear);
+        const pv = project(origin.map((c, i) => c + v[i]), shear);
+        const m = [pu[0] - o[0], pu[1] - o[1], pv[0] - o[0], pv[1] - o[1], o[0], o[1]];
+
+        const g = svgEl('g', { transform: `matrix(${m.join(' ')})` });
+        g.appendChild(svgEl('rect', {
+          x: 0, y: 0, width: 1, height: 1,
+          fill: die.colors[role], stroke: die.colors.edge,
+          'stroke-width': 3, 'stroke-linejoin': 'round', 'vector-effect': 'non-scaling-stroke',
+        }));
+        const pips = svgEl('g', { fill: die.colors.pip });
+        g.appendChild(pips);
+        svg.appendChild(g);
+        pipGroups[role] = pips;
+      }
+
+      function show(top) {
+        const faces = orientationFor(top);
+        for (const role in pipGroups) {
+          const group = pipGroups[role];
+          group.replaceChildren();
+          for (const [cx, cy] of PIPS[faces[role]]) {
+            group.appendChild(svgEl('circle', { cx, cy, r: 0.085 }));
+          }
+        }
+      }
+
+      return { svg, show };
+    }
+
+    /* ============================================================
+       CARD SETUP
+       ============================================================ */
     function buildCard(die) {
       const tpl = document.getElementById('die-card-template');
       const card = tpl.content.firstElementChild.cloneNode(true);
@@ -338,11 +618,164 @@
         countRow.appendChild(td);
       }
 
-      return card;
+      // Die drawing
+      const drawing = buildDieSvg(die);
+      card.querySelector('.die-stage').appendChild(drawing.svg);
+
+      return { card, drawing };
     }
 
-    const diceContainer = document.getElementById('dice');
-    for (const die of DICE) diceContainer.appendChild(buildCard(die));
+    /* ============================================================
+       PAGE LOGIC
+       ============================================================ */
+    const fmt = n => n.toLocaleString('en-US');
+    const LIMIT_MESSAGE = `This die has reached its ${fmt(MAX_ROLLS)}-roll limit. ` +
+      'Export your results to keep a copy, or reset to start over.';
+    const NO_STORAGE_MESSAGE = 'This browser is not saving rolls. Export your results before leaving the page.';
+
+    const views = DICE.map(die => {
+      const { card, drawing } = buildCard(die);
+      document.getElementById('dice').appendChild(card);
+      const history = loadHistory(die);
+      const view = {
+        die, card, drawing,
+        roll: makeRoller(decodeWeights(die.weights)),
+        history,
+        counts: countFaces(history),
+        status: card.querySelector('.status'),
+      };
+      drawing.show(history ? Number(history[history.length - 1]) : 1);
+      render(view);
+      return view;
+    });
+
+    // Update every number and button state for one die (called once per batch).
+    function render(view, message) {
+      const { card, counts, history } = view;
+      FACES.forEach((f, i) => { card.querySelector(`.count-${f}`).textContent = fmt(counts[i]); });
+      card.querySelector('.total-count').textContent = fmt(history.length);
+
+      const atLimit = history.length >= MAX_ROLLS;
+      card.querySelectorAll('[data-action="roll"]').forEach(b => { b.disabled = atLimit; });
+      card.querySelectorAll('[data-action^="export"], [data-action="reset"]')
+        .forEach(b => { b.disabled = history.length === 0; });
+
+      const notices = [];
+      if (atLimit) notices.push(LIMIT_MESSAGE);
+      if (!storageWorks) notices.push(NO_STORAGE_MESSAGE);
+      view.status.replaceChildren();
+      if (message) view.status.append(message);
+      for (const text of notices) {
+        const line = document.createElement('span');
+        line.className = 'notice';
+        line.textContent = text;
+        view.status.append(line);
+      }
+    }
+
+    function rollBatch(view, requested) {
+      const n = Math.min(requested, MAX_ROLLS - view.history.length);  // never pass the limit
+      if (n <= 0) return;
+      const results = [];
+      for (let i = 0; i < n; i++) {
+        const face = view.roll();
+        results.push(face);
+        view.counts[face - 1]++;
+      }
+      view.history += results.join('');
+      saveHistory(view.die, view.history);
+
+      view.drawing.show(results[results.length - 1]);
+      playTumble(view.drawing.svg);
+      render(view, n === 1 ? `Last roll: ${results[0]}` : `Last ${n} rolls: ${results.join(', ')}`);
+    }
+
+    function playTumble(svg) {
+      svg.classList.remove('tumble');
+      void svg.getBoundingClientRect();   // restart the animation on rapid clicks
+      svg.classList.add('tumble');
+    }
+
+    /* ---------- CSV export ---------- */
+    function today() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function download(filename, text) {
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function exportHistory(view) {
+      const lines = ['roll_number,face'];
+      for (let i = 0; i < view.history.length; i++) lines.push(`${i + 1},${view.history[i]}`);
+      download(`${view.die.file}-roll-history-${today()}.csv`, lines.join('\n') + '\n');
+    }
+    function exportSummary(view) {
+      const lines = ['face,count'];
+      FACES.forEach((f, i) => lines.push(`${f},${view.counts[i]}`));
+      lines.push(`total,${view.history.length}`);
+      download(`${view.die.file}-summary-${today()}.csv`, lines.join('\n') + '\n');
+    }
+
+    /* ---------- Reset with confirmation ---------- */
+    const dialog = document.getElementById('reset-dialog');
+    let pendingReset = null;
+
+    function askReset(view, returnFocusTo) {
+      const n = view.history.length;
+      pendingReset = { view, returnFocusTo };
+      document.getElementById('reset-title').textContent = `Reset the ${view.die.name}?`;
+      document.getElementById('reset-message').textContent =
+        `This erases all ${fmt(n)} ${n === 1 ? 'roll' : 'rolls'} of the ${view.die.name} saved in this browser. ` +
+        'It cannot be undone. Export first if you want to keep them.';
+      document.getElementById('reset-confirm').textContent = `Erase ${fmt(n)} ${n === 1 ? 'roll' : 'rolls'}`;
+      dialog.returnValue = '';
+      dialog.showModal();
+    }
+    dialog.addEventListener('close', () => {
+      if (!pendingReset) return;
+      const { view, returnFocusTo } = pendingReset;
+      pendingReset = null;
+      if (dialog.returnValue === 'confirm') {
+        view.history = '';
+        view.counts = [0, 0, 0, 0, 0, 0];
+        saveHistory(view.die, '');
+        view.drawing.show(1);
+        render(view, 'This die was reset.');
+        view.card.querySelector('[data-action="roll"]').focus();
+      } else if (returnFocusTo) {
+        returnFocusTo.focus();
+      }
+    });
+
+    /* ---------- Button clicks (one listener per card) ---------- */
+    for (const view of views) {
+      view.card.addEventListener('click', e => {
+        const button = e.target.closest('button[data-action]');
+        if (!button || button.disabled) return;
+        switch (button.dataset.action) {
+          case 'roll':           rollBatch(view, Number(button.dataset.count)); break;
+          case 'export-history': exportHistory(view); break;
+          case 'export-summary': exportSummary(view); break;
+          case 'reset':          askReset(view, button); break;
+        }
+      });
+    }
+
+    // If the page is open in two tabs, keep them in step.
+    window.addEventListener('storage', e => {
+      const view = views.find(v => storageKey(v.die) === e.key);
+      if (!view) return;
+      view.history = loadHistory(view.die);
+      view.counts = countFaces(view.history);
+      render(view);
+    });
   </script>
 </body>
 </html>

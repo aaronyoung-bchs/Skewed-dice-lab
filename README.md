@@ -15,16 +15,16 @@ A single-page dice-rolling interactive for the **January 2027 Mu Alpha Theta mon
 The page runs a probability experiment. It rolls the dice, keeps your results, and lets you export them. All analysis happens outside the page.
 
 - **Two dice:** a Standard Die and a Skew d6, each drawn in its own shape.
-- **Rolling in batches:** roll 1, 5, or 10 at a time for each die.
+- **Rolling in batches:** roll 1, 5, or 10 at a time for each die. Each batch plays a short tumble and lists the faces just rolled.
 - **Running results:** each die shows the count for every face and the total number of rolls, as text.
-- **Roll limit:** each die allows up to 10,000 rolls in total. Saved rolls count toward the limit. Resetting a die clears its data and restores the full allowance.
+- **Roll limit:** each die allows up to 10,000 rolls in total. Saved rolls count toward the limit. If a batch would pass the limit, only the rolls that fit are made. At the limit, the roll buttons turn off and a short message suggests exporting. Resetting a die clears its data and restores the full allowance.
 - **Saved in your browser:** results stay through refreshes and return visits on the same device and browser.
-- **CSV export for each die:** two files per die.
-  - the full roll history in order (`roll_number, face`)
-  - a summary of counts for each face
+- **CSV export for each die:** two files per die, named with the die and the date (for example `skew-d6-roll-history-2027-01-15.csv`).
+  - **Roll history:** every roll in order, with columns `roll_number,face`
+  - **Summary:** columns `face,count`, one row per face plus a `total` row
 
   Teammates on different devices can combine their data using these exports.
-- **Reset:** each die resets on its own, after a confirmation step.
+- **Reset:** each die resets on its own. A confirmation box shows how many rolls will be erased, and **Cancel** has focus by default.
 
 ### Privacy
 
@@ -34,7 +34,7 @@ There are no logins, no tracking, and no data collection. Roll data never leaves
 
 ## Credits
 
-- **Skew d6:** designed and sold by [The Dice Lab](https://www.mathartfun.com/thedicelab.com/SkewDice.html). The drawing on this page is an original rendering. It does not use their photos, packaging, or logos.
+- **Skew d6:** designed and sold by [The Dice Lab](https://www.mathartfun.com/thedicelab.com/SkewDice.html). The dice drawings on the page were generated with AI assistance (Claude), as SVG shapes drawn by the page's own code. They do not use The Dice Lab's photos, packaging, or logos.
 - **Classroom data:** the Skew d6 in this simulation is based on real rolls collected by AP Statistics teacher **Doug Tyson** and his students.
 - **Challenge and page:** Aaron Young, Bullitt Central High School Mu Alpha Theta.
 
@@ -96,9 +96,56 @@ The layout shows two columns on wide screens and one column on phones and narrow
 
 ---
 
+## How the page works
+
+All the code is in `index.html` and is commented section by section:
+
+| Section in `index.html` | What it does |
+| --- | --- |
+| `DICE CONFIGURATION` | the list of dice: names, shapes, colors, encoded weights |
+| `WEIGHT ENCODING` | turns weights into the stored string and back |
+| `ROLLING LOGIC` | weighted random rolls |
+| `SAVED DATA` | saving and loading each die's history in the browser |
+| `DRAWING` | draws each die as an SVG and shows the rolled face on top |
+| `PAGE LOGIC` | buttons, counts, the roll limit, CSV export, reset |
+
+**Randomness.** Rolls use the browser's secure random generator (`crypto.getRandomValues`). Each face's probability is its whole-number weight divided by the total of all six weights. Rejection sampling keeps every outcome exactly as likely as its weight says. Every roll is independent: the page never adjusts the rolls to match earlier results.
+
+**Saved data.** Each die's history is stored in the browser's `localStorage` as one string of digits, one character per roll (about 10 KB at 10,000 rolls), under the key `skewQuestion.v1.<die id>`. Counts are rebuilt from the history when the page loads. The screen updates once per batch, not once per roll. If the page is open in two tabs, they stay in sync.
+
+**Drawings.** Each die is a cube drawn in an oblique view that shows three faces. The Skew d6 applies a shear to the cube's corners, so every face becomes a parallelogram, and its pips slant with the faces. Visible faces follow real die layout: opposite faces add to 7.
+
+---
+
 ## Reusing the page with different dice
 
-*Filled in once `index.html` exists.* This section will explain where the dice configuration lives, how to change a die's name, shape, or face weights, and when to change the storage key so old saved data doesn't carry over.
+Everything about the dice is in the `DICE` list near the top of the script in `index.html`. Each entry looks like this:
+
+```js
+{
+  id: 'standard',            // storage key and element ids (letters only, keep it unique)
+  name: 'Standard Die',      // shown on the page
+  file: 'standard-die',      // start of the exported file names
+  shape: 'cube',             // 'cube' or 'skew'
+  colors: { top: '#FFFFFF', front: '#ECECE9', side: '#D3D3CF', edge: '#4B2D2F', pip: '#1F1A1B' },
+  weights: 'MS4xLjEuMS4xLjE=',   // encoded; this one is [1, 1, 1, 1, 1, 1]
+},
+```
+
+**To change a die's weights:**
+
+1. Choose six whole numbers, one per face in order 1–6. Each face's probability is its number divided by the total. `[1, 1, 1, 1, 1, 1]` is a standard die, and `[2, 1, 1, 1, 1, 1]` makes face 1 twice as likely as each other face.
+2. Open the page in Chrome and open the console (**Ctrl+Shift+J**, or **Cmd+Option+J** on a Mac).
+3. Run `encodeWeights([2, 1, 1, 1, 1, 1])` and copy the string it prints.
+4. Paste that string into the die's `weights` value.
+
+The weights are encoded only so they aren't in plain view. The encoding is not secret: anyone reading the code can decode it.
+
+**To change how slanted the Skew d6 looks,** edit the `SHEAR` values in the `DRAWING` section. `0` means no slant.
+
+**Start every browser fresh after changing the dice.** Rolls saved under the old dice would otherwise mix with the new ones. Change `STORAGE_PREFIX` (for example from `skewQuestion.v1.` to `skewQuestion.v2.`). Old data is then ignored.
+
+**Other settings** near the top of the script are `BATCH_SIZES` (currently 1, 5, 10) and `MAX_ROLLS` (currently 10,000).
 
 ---
 
@@ -107,14 +154,14 @@ The layout shows two columns on wide screens and one column on phones and narrow
 - [x] Settle open decisions (name, theme, credits)
 - [x] Set up the repository foundation (README, license, Pages config)
 - [x] Build the page skeleton and intro panel (BCHS colors, responsive layout)
-- [ ] Add the dice configuration and weighted rolling logic
-- [ ] Draw the Standard Die and the Skew d6
-- [ ] Add batch roll buttons (1 / 5 / 10) and a brief animation
-- [ ] Add running counts and the 10,000-roll limit
-- [ ] Save rolls in the browser (local storage)
-- [ ] Add CSV export (full history and summary)
-- [ ] Add reset with confirmation
-- [ ] Check accessibility, Chromebook and phone layout, and performance at 10,000 rolls
+- [x] Add the dice configuration and weighted rolling logic (encoded weights, secure randomness)
+- [x] Draw the Standard Die and the Skew d6
+- [x] Add batch roll buttons (1 / 5 / 10) and a brief tumble animation
+- [x] Add running counts and the 10,000-roll limit
+- [x] Save rolls in the browser (local storage)
+- [x] Add CSV export (full history and summary)
+- [x] Add reset with confirmation
+- [ ] Final review: test on a real Chromebook and phone, check accessibility with a keyboard and a screen reader
 - [ ] Enable GitHub Pages and tag `jan-2027`
 
 ---
